@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 )
@@ -39,11 +38,6 @@ type GodisCommand struct {
 var server GodisServer
 var cmdTable []GodisCommand
 
-func initServer(config *Config) error {
-	//TODO
-	return nil
-}
-
 func getCommand(c *GodisClient) {
 	//TODO
 }
@@ -58,6 +52,18 @@ func initCmdTable() {
 		{"set", setCommand, 3},
 		//TODO
 	}
+}
+
+func initServer(config *Config) error {
+	server.port = config.Port
+	server.clients = ListCreate()
+	server.db = &GodisDB{
+		data:   DictCreate(),
+		expire: DictCreate(),
+	}
+	var err error
+	server.fd, err = TcpServer(server.port, "")
+	return err
 }
 
 func main() {

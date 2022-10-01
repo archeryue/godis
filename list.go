@@ -11,3 +11,9 @@ type List struct {
 	tail *Node
 	// todo
 }
+
+func ListCreate() *List {
+	var list List
+	//TODO
+	return &list
+}

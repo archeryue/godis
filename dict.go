@@ -24,3 +24,9 @@ type Dict struct {
 	rehashidx int
 	// iterators
 }
+
+func DictCreate() *Dict {
+	var dict Dict
+	//TODO
+	return &dict
+}
