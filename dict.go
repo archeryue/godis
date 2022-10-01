@@ -16,8 +16,6 @@ type htable struct {
 type DictType interface {
 	HashFunc() int
 	CompareFunc() int
-	KeyDestructor()
-	ValDestructor()
 }
 
 type Dict struct {

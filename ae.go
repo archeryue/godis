@@ -23,3 +23,7 @@ type AeLoop struct {
 	timeEventNextId int
 	stop            int
 }
+
+func (loop *AeLoop) AeMain() {
+	//TODO
+}
