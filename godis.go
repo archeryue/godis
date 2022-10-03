@@ -62,7 +62,7 @@ func initServer(config *Config) error {
 		expire: DictCreate(),
 	}
 	var err error
-	server.fd, err = TcpServer(server.port, "")
+	server.fd, err = TcpServer(server.port)
 	return err
 }
 
