@@ -61,6 +61,7 @@ func initServer(config *Config) error {
 		data:   DictCreate(),
 		expire: DictCreate(),
 	}
+	server.aeLoop = AeLoopCreate()
 	var err error
 	server.fd, err = TcpServer(server.port)
 	return err
