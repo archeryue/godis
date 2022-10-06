@@ -1,6 +1,7 @@
 package main
 
 import (
+	"hash/fnv"
 	"log"
 	"os"
 )
@@ -61,7 +62,7 @@ func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
 	//TODO: proccess command
 }
 
-func EqualClient(a, b interface{}) bool {
+func ClientEqual(a, b interface{}) bool {
 	c1, ok := a.(*GodisClient)
 	if !ok {
 		return false
@@ -73,7 +74,7 @@ func EqualClient(a, b interface{}) bool {
 	return c1.fd == c2.fd
 }
 
-func EqualGStr(a, b interface{}) bool {
+func GStrEqual(a, b interface{}) bool {
 	o1, ok := a.(*Gobj)
 	if !ok || o1.Type_ != GSTR {
 		return false
@@ -90,15 +91,16 @@ func GStrHash(key interface{}) int {
 	if !ok || o.Type_ != GSTR {
 		return 0
 	}
-	//TODO: hash val
-	return 0
+	hash := fnv.New32()
+	hash.Write([]byte(o.Val_.(string)))
+	return int(hash.Sum32())
 }
 
 func CreateClient(fd int) *GodisClient {
 	var client GodisClient
 	client.fd = fd
 	client.db = server.db
-	client.reply = ListCreate(ListType{EqualFunc: EqualGStr})
+	client.reply = ListCreate(ListType{EqualFunc: GStrEqual})
 	server.aeLoop.AddFileEvent(fd, AE_READABLE, ReadQueryFromClient, nil)
 	return &client
 }
@@ -121,10 +123,10 @@ func ServerCron(loop *AeLoop, id int, extra interface{}) {
 
 func initServer(config *Config) error {
 	server.port = config.Port
-	server.clients = ListCreate(ListType{EqualFunc: EqualClient})
+	server.clients = ListCreate(ListType{EqualFunc: ClientEqual})
 	server.db = &GodisDB{
-		data:   DictCreate(DictType{HashFunc: GStrHash, EqualFunc: EqualGStr}),
-		expire: DictCreate(DictType{HashFunc: GStrHash, EqualFunc: EqualGStr}),
+		data:   DictCreate(DictType{HashFunc: GStrHash, EqualFunc: GStrEqual}),
+		expire: DictCreate(DictType{HashFunc: GStrHash, EqualFunc: GStrEqual}),
 	}
 	server.aeLoop = AeLoopCreate()
 	var err error
