@@ -1,8 +1,8 @@
 package main
 
 type entry struct {
-	key  *Gobj
-	val  *Gobj
+	key  interface{}
+	val  interface{}
 	next *entry
 }
 
@@ -13,9 +13,9 @@ type htable struct {
 	used  int64
 }
 
-type DictType interface {
-	HashFunc() int
-	CompareFunc() int
+type DictType struct {
+	HashFunc  func(key interface{}) int
+	EqualFunc func(k1, k2 interface{}) bool
 }
 
 type Dict struct {
@@ -25,8 +25,8 @@ type Dict struct {
 	// iterators
 }
 
-func DictCreate() *Dict {
+func DictCreate(dictType DictType) *Dict {
 	var dict Dict
-	//TODO
+	dict.DictType = dictType
 	return &dict
 }

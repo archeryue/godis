@@ -8,6 +8,12 @@ import (
 
 const BACKLOG int = 64
 
+func Accept(fd int) (int, error) {
+	nfd, _, err := unix.Accept(fd)
+	// ignore client addr for now
+	return nfd, err
+}
+
 func TcpServer(port int) (int, error) {
 	s, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, 0)
 	if err != nil {

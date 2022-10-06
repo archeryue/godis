@@ -14,8 +14,8 @@ const (
 	AE_ONCE   TeType = 2
 )
 
-type FileProc func(loop *AeLoop, fd int, mask FeType, extra interface{})
-type TimeProc func(loop *AeLoop, id int, extra interface{}) int
+type FileProc func(loop *AeLoop, fd int, extra interface{})
+type TimeProc func(loop *AeLoop, id int, extra interface{})
 
 type AeFileEvent struct {
 	fd    int
@@ -123,7 +123,7 @@ func (loop *AeLoop) AeProcess(tes []AeTimeEvent, fes []AeFileEvent) {
 		}
 	}
 	for _, fe := range fes {
-		fe.proc(loop, fe.fd, fe.mask, fe.extra)
+		fe.proc(loop, fe.fd, fe.extra)
 		loop.RemoveFileEvent(fe.fd, fe.mask)
 	}
 }

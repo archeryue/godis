@@ -22,6 +22,7 @@ type GodisClient struct {
 	fd    int
 	db    *GodisDB
 	query string
+	args  []*Gobj
 	reply *List
 }
 
@@ -54,12 +55,76 @@ func initCmdTable() {
 	}
 }
 
+func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
+	//TODO: read query from client
+	//TODO: handle query -> args
+	//TODO: proccess command
+}
+
+func EqualClient(a, b interface{}) bool {
+	c1, ok := a.(*GodisClient)
+	if !ok {
+		return false
+	}
+	c2, ok := a.(*GodisClient)
+	if !ok {
+		return false
+	}
+	return c1.fd == c2.fd
+}
+
+func EqualGStr(a, b interface{}) bool {
+	o1, ok := a.(*Gobj)
+	if !ok || o1.Type_ != GSTR {
+		return false
+	}
+	o2, ok := a.(*Gobj)
+	if !ok || o1.Type_ != GSTR {
+		return false
+	}
+	return o1.Val_.(string) == o2.Val_.(string)
+}
+
+func GStrHash(key interface{}) int {
+	o, ok := key.(*Gobj)
+	if !ok || o.Type_ != GSTR {
+		return 0
+	}
+	//TODO: hash val
+	return 0
+}
+
+func CreateClient(fd int) *GodisClient {
+	var client GodisClient
+	client.fd = fd
+	client.db = server.db
+	client.reply = ListCreate(ListType{EqualFunc: EqualGStr})
+	server.aeLoop.AddFileEvent(fd, AE_READABLE, ReadQueryFromClient, nil)
+	return &client
+}
+
+func AcceptHandler(loop *AeLoop, fd int, extra interface{}) {
+	nfd, err := Accept(fd)
+	if err != nil {
+		log.Printf("accept err: %v\n", err)
+		return
+	}
+	client := CreateClient(nfd)
+	//TODO: check max clients limit
+	server.clients.Append(client)
+}
+
+// background cron per 1000ms
+func ServerCron(loop *AeLoop, id int, extra interface{}) {
+	//TODO: background job
+}
+
 func initServer(config *Config) error {
 	server.port = config.Port
-	server.clients = ListCreate()
+	server.clients = ListCreate(ListType{EqualFunc: EqualClient})
 	server.db = &GodisDB{
-		data:   DictCreate(),
-		expire: DictCreate(),
+		data:   DictCreate(DictType{HashFunc: GStrHash, EqualFunc: EqualGStr}),
+		expire: DictCreate(DictType{HashFunc: GStrHash, EqualFunc: EqualGStr}),
 	}
 	server.aeLoop = AeLoopCreate()
 	var err error
@@ -73,11 +138,13 @@ func main() {
 	if err != nil {
 		log.Printf("config error: %v\n", err)
 	}
+	initCmdTable()
 	err = initServer(config)
 	if err != nil {
 		log.Printf("init server error: %v\n", err)
 	}
-	initCmdTable()
+	server.aeLoop.AddFileEvent(server.fd, AE_READABLE, AcceptHandler, nil)
+	server.aeLoop.AddTimeEvent(AE_NORMAL, 1000, ServerCron, nil)
 	log.Println("godis server is up.")
 	server.aeLoop.AeMain()
 }
