@@ -28,7 +28,7 @@ type AeFileEvent struct {
 type AeTimeEvent struct {
 	id    int
 	mask  TeType
-	when  int64 //ms
+	when  int64 //second
 	proc  TimeProc
 	extra interface{}
 	next  *AeTimeEvent

@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"log"
 	"os"
+	"time"
 )
 
 type GodisDB struct {
@@ -38,7 +39,11 @@ type GodisCommand struct {
 
 // Global Varibles
 var server GodisServer
-var cmdTable []GodisCommand
+var cmdTable []GodisCommand = []GodisCommand{
+	{"get", getCommand, 2},
+	{"set", setCommand, 3},
+	//TODO
+}
 
 func getCommand(c *GodisClient) {
 	//TODO
@@ -46,14 +51,6 @@ func getCommand(c *GodisClient) {
 
 func setCommand(c *GodisClient) {
 	//TODO
-}
-
-func initCmdTable() {
-	cmdTable = []GodisCommand{
-		{"get", getCommand, 2},
-		{"set", setCommand, 3},
-		//TODO
-	}
 }
 
 func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
@@ -116,9 +113,20 @@ func AcceptHandler(loop *AeLoop, fd int, extra interface{}) {
 	server.clients.Append(client)
 }
 
-// background cron per 1000ms
+const EXPIRE_CHECK_COUNT int = 100
+
+// background cron per 1s
 func ServerCron(loop *AeLoop, id int, extra interface{}) {
-	//TODO: background job
+	for i := 0; i < EXPIRE_CHECK_COUNT; i++ {
+		key, val := server.db.expire.RandomGet()
+		if key == nil {
+			break
+		}
+		if int64(val.(*Gobj).IntVal()) < time.Now().Unix() {
+			server.db.data.RemoveKey(key)
+			server.db.expire.RemoveKey(key)
+		}
+	}
 }
 
 func initServer(config *Config) error {
@@ -140,13 +148,12 @@ func main() {
 	if err != nil {
 		log.Printf("config error: %v\n", err)
 	}
-	initCmdTable()
 	err = initServer(config)
 	if err != nil {
 		log.Printf("init server error: %v\n", err)
 	}
 	server.aeLoop.AddFileEvent(server.fd, AE_READABLE, AcceptHandler, nil)
-	server.aeLoop.AddTimeEvent(AE_NORMAL, 1000, ServerCron, nil)
+	server.aeLoop.AddTimeEvent(AE_NORMAL, 1, ServerCron, nil)
 	log.Println("godis server is up.")
 	server.aeLoop.AeMain()
 }

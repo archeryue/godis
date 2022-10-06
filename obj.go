@@ -1,5 +1,7 @@
 package main
 
+import "strconv"
+
 type Gtype uint8
 
 const (
@@ -16,6 +18,22 @@ type Gobj struct {
 	Type_    Gtype
 	Val_     Gval
 	refCount int
+}
+
+func (o *Gobj) IntVal() int {
+	if o.Type_ != GSTR {
+		return 0
+	}
+	val, _ := strconv.Atoi(o.Val_.(string))
+	return val
+}
+
+func CreateFromInt(val int) *Gobj {
+	return &Gobj{
+		Type_: GSTR,
+		Val_: strconv.Itoa(val),
+		refCount: 1,
+	}
 }
 
 func CreateObject(typ Gtype, ptr interface{}) *Gobj {

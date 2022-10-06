@@ -30,3 +30,12 @@ func DictCreate(dictType DictType) *Dict {
 	dict.DictType = dictType
 	return &dict
 }
+
+func (dict *Dict) RandomGet() (key, val interface{}) {
+	//TODO:
+	return nil, nil
+}
+
+func (dic *Dict) RemoveKey(key interface{}) {
+	//TODO:
+}
