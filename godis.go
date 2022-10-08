@@ -115,7 +115,7 @@ func AcceptHandler(loop *AeLoop, fd int, extra interface{}) {
 
 const EXPIRE_CHECK_COUNT int = 100
 
-// background cron per 1s
+// background job, runs every 100ms
 func ServerCron(loop *AeLoop, id int, extra interface{}) {
 	for i := 0; i < EXPIRE_CHECK_COUNT; i++ {
 		key, val := server.db.expire.RandomGet()
@@ -136,8 +136,10 @@ func initServer(config *Config) error {
 		data:   DictCreate(DictType{HashFunc: GStrHash, EqualFunc: GStrEqual}),
 		expire: DictCreate(DictType{HashFunc: GStrHash, EqualFunc: GStrEqual}),
 	}
-	server.aeLoop = AeLoopCreate()
 	var err error
+	if server.aeLoop, err = AeLoopCreate(); err != nil {
+		return err
+	}
 	server.fd, err = TcpServer(server.port)
 	return err
 }
@@ -153,7 +155,7 @@ func main() {
 		log.Printf("init server error: %v\n", err)
 	}
 	server.aeLoop.AddFileEvent(server.fd, AE_READABLE, AcceptHandler, nil)
-	server.aeLoop.AddTimeEvent(AE_NORMAL, 1, ServerCron, nil)
+	server.aeLoop.AddTimeEvent(AE_NORMAL, 100, ServerCron, nil)
 	log.Println("godis server is up.")
 	server.aeLoop.AeMain()
 }
