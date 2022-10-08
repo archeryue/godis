@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 type FeType int
 
 const (
@@ -26,12 +28,13 @@ type AeFileEvent struct {
 }
 
 type AeTimeEvent struct {
-	id    int
-	mask  TeType
-	when  int64 //second
-	proc  TimeProc
-	extra interface{}
-	next  *AeTimeEvent
+	id       int
+	mask     TeType
+	when     int64 //second
+	interval int64
+	proc     TimeProc
+	extra    interface{}
+	next     *AeTimeEvent
 }
 
 type AeLoop struct {
@@ -71,13 +74,14 @@ func (loop *AeLoop) RemoveFileEvent(fd int, mask FeType) {
 	// TODO: epoll ctl
 }
 
-func (loop *AeLoop) AddTimeEvent(mask TeType, when int64, proc TimeProc, extra interface{}) int {
+func (loop *AeLoop) AddTimeEvent(mask TeType, interval int64, proc TimeProc, extra interface{}) int {
 	id := loop.timeEventNextId
 	loop.timeEventNextId++
 	var te AeTimeEvent
 	te.id = id
 	te.mask = mask
-	te.when = when
+	te.interval = interval
+	te.when = time.Now().Unix() + interval
 	te.proc = proc
 	te.extra = extra
 	te.next = loop.TimeEvents
@@ -120,6 +124,8 @@ func (loop *AeLoop) AeProcess(tes []AeTimeEvent, fes []AeFileEvent) {
 		te.proc(loop, te.id, te.extra)
 		if te.mask == AE_ONCE {
 			loop.RemoveTimeEvent(te.id)
+		} else {
+			te.when = time.Now().Unix() + te.interval
 		}
 	}
 	for _, fe := range fes {

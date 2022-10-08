@@ -30,8 +30,8 @@ func (o *Gobj) IntVal() int {
 
 func CreateFromInt(val int) *Gobj {
 	return &Gobj{
-		Type_: GSTR,
-		Val_: strconv.Itoa(val),
+		Type_:    GSTR,
+		Val_:     strconv.Itoa(val),
 		refCount: 1,
 	}
 }
