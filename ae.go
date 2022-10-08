@@ -49,33 +49,45 @@ type AeLoop struct {
 	stop            bool
 }
 
-func getEpollEvent(mask FeType) uint32 {
-	if mask == AE_READABLE {
-		return unix.EPOLLIN
-	} else {
-		return unix.EPOLLOUT
-	}
+var fe2ep [3]uint32 = [3]uint32{0, unix.EPOLLIN, unix.EPOLLOUT}
+
+func otherKey(feKey int) int {
+	return feKey * -1
 }
 
 func getFeKey(fd int, mask FeType) int {
 	if mask == AE_READABLE {
 		return fd
 	} else {
-		return fd * -1
+		return otherKey(fd)
 	}
+}
+
+func (loop *AeLoop) getEpollMask(fd int) uint32 {
+	var ev uint32
+	if loop.FileEvents[getFeKey(fd, AE_READABLE)] != nil {
+		ev |= fe2ep[AE_READABLE]
+	}
+	if loop.FileEvents[getFeKey(fd, AE_WRITABLE)] != nil {
+		ev |= fe2ep[AE_WRITABLE]
+	}
+	return ev
 }
 
 func (loop *AeLoop) AddFileEvent(fd int, mask FeType, proc FileProc, extra interface{}) {
 	// epoll ctl
 	op := unix.EPOLL_CTL_ADD
-	if loop.FileEvents[getFeKey(fd, AE_READABLE)] != nil || loop.FileEvents[getFeKey(fd, AE_WRITABLE)] != nil {
+	ev := loop.getEpollMask(fd)
+	if ev != 0 {
 		op = unix.EPOLL_CTL_MOD
 	}
-	err := unix.EpollCtl(loop.fileEventFd, op, fd, &unix.EpollEvent{Fd: int32(fd), Events: getEpollEvent(mask)})
+	ev |= fe2ep[mask]
+	err := unix.EpollCtl(loop.fileEventFd, op, fd, &unix.EpollEvent{Fd: int32(fd), Events: ev})
 	if err != nil {
 		log.Printf("epoll ctr err: %v\n", err)
 		return
 	}
+	// ae ctl
 	var fe AeFileEvent
 	fe.fd = fd
 	fe.mask = mask
@@ -85,11 +97,19 @@ func (loop *AeLoop) AddFileEvent(fd int, mask FeType, proc FileProc, extra inter
 }
 
 func (loop *AeLoop) RemoveFileEvent(fd int, mask FeType) {
-	loop.FileEvents[getFeKey(fd, mask)] = nil
-	err := unix.EpollCtl(loop.fileEventFd, unix.EPOLL_CTL_DEL, fd, &unix.EpollEvent{Fd: int32(fd), Events: getEpollEvent(mask)})
+	// epoll ctl
+	op := unix.EPOLL_CTL_DEL
+	ev := loop.getEpollMask(fd)
+	ev &= ^fe2ep[mask]
+	if ev != 0 {
+		op = unix.EPOLL_CTL_MOD
+	}
+	err := unix.EpollCtl(loop.fileEventFd, op, fd, &unix.EpollEvent{Fd: int32(fd), Events: ev})
 	if err != nil {
 		log.Printf("epoll del err: %v\n", err)
 	}
+	// ae ctl
+	loop.FileEvents[getFeKey(fd, mask)] = nil
 }
 
 func GetMsTime() int64 {
@@ -172,7 +192,8 @@ func (loop *AeLoop) AeWait() (tes []*AeTimeEvent, fes []*AeFileEvent, err error)
 			if fe != nil {
 				fes = append(fes, fe)
 			}
-		} else if events[i].Events&unix.EPOLLOUT != 0 {
+		}
+		if events[i].Events&unix.EPOLLOUT != 0 {
 			fe := loop.FileEvents[getFeKey(int(events[i].Fd), AE_WRITABLE)]
 			if fe != nil {
 				fes = append(fes, fe)
