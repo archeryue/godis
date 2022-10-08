@@ -202,7 +202,6 @@ func (loop *AeLoop) AeProcess(tes []*AeTimeEvent, fes []*AeFileEvent) {
 	}
 	for _, fe := range fes {
 		fe.proc(loop, fe.fd, fe.extra)
-		loop.RemoveFileEvent(fe.fd, fe.mask)
 	}
 }
 
