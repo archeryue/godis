@@ -51,15 +51,11 @@ type AeLoop struct {
 
 var fe2ep [3]uint32 = [3]uint32{0, unix.EPOLLIN, unix.EPOLLOUT}
 
-func otherKey(feKey int) int {
-	return feKey * -1
-}
-
 func getFeKey(fd int, mask FeType) int {
 	if mask == AE_READABLE {
 		return fd
 	} else {
-		return otherKey(fd)
+		return fd * -1
 	}
 }
 
