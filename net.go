@@ -14,6 +14,14 @@ func Accept(fd int) (int, error) {
 	return nfd, err
 }
 
+func Read(fd int, buf []byte) (int, error) {
+	return unix.Read(fd, buf)
+}
+
+func Write(fd int, buf []byte) (int, error) {
+	return unix.Write(fd, buf)
+}
+
 func TcpServer(port int) (int, error) {
 	s, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, 0)
 	if err != nil {

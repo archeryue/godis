@@ -1,10 +1,24 @@
 package main
 
 import (
+	"errors"
 	"hash/fnv"
 	"log"
 	"os"
 	"time"
+)
+
+type CmdType = byte
+
+const (
+	COMMAND_UNKNOWN CmdType = 0x00
+	COMMAND_INLINE  CmdType = 0x01
+	COMMAND_BULK    CmdType = 0x02
+)
+
+const (
+	GODIS_IO_BUF   int = 1024 * 16
+	GODIS_MAX_BULK int = 1024 * 4
 )
 
 type GodisDB struct {
@@ -21,11 +35,15 @@ type GodisServer struct {
 }
 
 type GodisClient struct {
-	fd    int
-	db    *GodisDB
-	query string
-	args  []*Gobj
-	reply *List
+	fd       int
+	db       *GodisDB
+	args     []*Gobj
+	reply    *List
+	queryBuf []byte
+	queryLen int
+	cmdTy    CmdType
+	bulkNum  int
+	bulkLen  int
 }
 
 type CommandProc func(c *GodisClient)
@@ -53,10 +71,82 @@ func setCommand(c *GodisClient) {
 	//TODO
 }
 
+func processCommand(c *GodisClient) {
+	//TODO: lookup command
+	//TODO: call command
+	//TODO: decrRef args
+}
+
+func freeClient(client *GodisClient) {
+	//TODO: delete file event
+	//TODO: decrRef reply & args list
+	//TODO: delete from clients
+}
+
+func resetClient(client *GodisClient) {
+
+}
+
+func handleInlineBuf(client *GodisClient) (bool, error) {
+	return false, nil
+}
+
+func handleBulkBuf(client *GodisClient) (bool, error) {
+	return false, nil
+}
+
+func handleQueryBuf(client *GodisClient) error {
+	for client.queryLen > 0 {
+		if client.cmdTy == COMMAND_UNKNOWN {
+			if client.queryBuf[0] == '*' {
+				client.cmdTy = COMMAND_BULK
+			} else {
+				client.cmdTy = COMMAND_INLINE
+			}
+		}
+		// trans query -> args
+		var ok bool
+		var err error
+		if client.cmdTy == COMMAND_INLINE {
+			ok, err = handleInlineBuf(client)
+		} else if client.cmdTy == COMMAND_BULK {
+			ok, err = handleBulkBuf(client)
+		} else {
+			return errors.New("unknow Godis Command Type")
+		}
+		if err != nil {
+			return err
+		}
+		// after query -> args
+		if ok {
+			if len(client.args) == 0 {
+				resetClient(client)
+			} else {
+				processCommand(client)
+			}
+		} else {
+			break
+		}
+	}
+	return nil
+}
+
 func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
-	//TODO: read query from client
-	//TODO: handle query -> args
-	//TODO: proccess command
+	client := extra.(*GodisClient)
+	if len(client.queryBuf)-client.queryLen < GODIS_MAX_BULK {
+		client.queryBuf = append(client.queryBuf, make([]byte, GODIS_MAX_BULK, GODIS_MAX_BULK)...)
+	}
+	n, err := Read(fd, client.queryBuf[client.queryLen:])
+	if err != nil {
+		log.Printf("client %v read err: %v\n", fd, err)
+		return
+	}
+	client.queryLen += n
+	err = handleQueryBuf(client)
+	if err != nil {
+		log.Printf("handle query buf err: %v\n", err)
+		return
+	}
 }
 
 func GStrEqual(a, b *Gobj) bool {
@@ -79,8 +169,8 @@ func CreateClient(fd int) *GodisClient {
 	var client GodisClient
 	client.fd = fd
 	client.db = server.db
+	client.queryBuf = make([]byte, GODIS_IO_BUF, GODIS_IO_BUF)
 	client.reply = ListCreate(ListType{EqualFunc: GStrEqual})
-	server.aeLoop.AddFileEvent(fd, AE_READABLE, ReadQueryFromClient, nil)
 	return &client
 }
 
@@ -93,6 +183,7 @@ func AcceptHandler(loop *AeLoop, fd int, extra interface{}) {
 	client := CreateClient(nfd)
 	//TODO: check max clients limit
 	server.clients[fd] = client
+	server.aeLoop.AddFileEvent(fd, AE_READABLE, ReadQueryFromClient, client)
 }
 
 const EXPIRE_CHECK_COUNT int = 100
