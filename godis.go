@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -17,8 +18,9 @@ const (
 )
 
 const (
-	GODIS_IO_BUF   int = 1024 * 16
-	GODIS_MAX_BULK int = 1024 * 4
+	GODIS_IO_BUF     int = 1024 * 16
+	GODIS_MAX_BULK   int = 1024 * 4
+	GODIS_MAX_INLINE int = 1024 * 4
 )
 
 type GodisDB struct {
@@ -88,11 +90,29 @@ func resetClient(client *GodisClient) {
 }
 
 func handleInlineBuf(client *GodisClient) (bool, error) {
-	return false, nil
+	index := strings.IndexAny(string(client.queryBuf[:client.queryLen]), "\r\n")
+	if index < 0 {
+		if client.queryLen > GODIS_MAX_INLINE {
+			return false, errors.New("too big inline cmd")
+		} else {
+			// wait to next read
+			return false, nil
+		}
+	}
+
+	subs := strings.Split(string(client.queryBuf[:index]), " ")
+	client.queryBuf = client.queryBuf[index+2:]
+	client.queryLen -= index + 2
+	client.args = make([]*Gobj, len(subs), len(subs))
+	for i, v := range subs {
+		client.args[i] = CreateObject(GSTR, v)
+	}
+
+	return true, nil
 }
 
 func handleBulkBuf(client *GodisClient) (bool, error) {
-	return false, nil
+	return true, nil
 }
 
 func handleQueryBuf(client *GodisClient) error {
