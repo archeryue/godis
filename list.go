@@ -1,13 +1,13 @@
 package main
 
 type Node struct {
-	val  interface{}
+	val  *Gobj
 	next *Node
 	prev *Node
 }
 
 type ListType struct {
-	EqualFunc func(a, b interface{}) bool
+	EqualFunc func(a, b *Gobj) bool
 }
 
 type List struct {
@@ -22,7 +22,7 @@ func ListCreate(listType ListType) *List {
 	return &list
 }
 
-func (list *List) Append(val interface{}) {
+func (list *List) Append(val *Gobj) {
 	var n Node
 	n.val = val
 	if list.head == nil {
@@ -35,7 +35,7 @@ func (list *List) Append(val interface{}) {
 	}
 }
 
-func (list *List) Remove(val interface{}) {
+func (list *List) Remove(val *Gobj) {
 	p := list.head
 	for p != nil {
 		if list.EqualFunc(p.val, val) {

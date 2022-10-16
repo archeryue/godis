@@ -16,7 +16,7 @@ type GodisServer struct {
 	fd      int
 	port    int
 	db      *GodisDB
-	clients *List
+	clients map[int]*GodisClient
 	aeLoop  *AeLoop
 }
 
@@ -59,37 +59,19 @@ func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
 	//TODO: proccess command
 }
 
-func ClientEqual(a, b interface{}) bool {
-	c1, ok := a.(*GodisClient)
-	if !ok {
+func GStrEqual(a, b *Gobj) bool {
+	if a.Type_ != GSTR || b.Type_ != GSTR {
 		return false
 	}
-	c2, ok := a.(*GodisClient)
-	if !ok {
-		return false
-	}
-	return c1.fd == c2.fd
+	return a.Val_.(string) == a.Val_.(string)
 }
 
-func GStrEqual(a, b interface{}) bool {
-	o1, ok := a.(*Gobj)
-	if !ok || o1.Type_ != GSTR {
-		return false
-	}
-	o2, ok := a.(*Gobj)
-	if !ok || o1.Type_ != GSTR {
-		return false
-	}
-	return o1.Val_.(string) == o2.Val_.(string)
-}
-
-func GStrHash(key interface{}) int {
-	o, ok := key.(*Gobj)
-	if !ok || o.Type_ != GSTR {
+func GStrHash(key *Gobj) int {
+	if key.Type_ != GSTR {
 		return 0
 	}
 	hash := fnv.New32()
-	hash.Write([]byte(o.Val_.(string)))
+	hash.Write([]byte(key.Val_.(string)))
 	return int(hash.Sum32())
 }
 
@@ -110,7 +92,7 @@ func AcceptHandler(loop *AeLoop, fd int, extra interface{}) {
 	}
 	client := CreateClient(nfd)
 	//TODO: check max clients limit
-	server.clients.Append(client)
+	server.clients[fd] = client
 }
 
 const EXPIRE_CHECK_COUNT int = 100
@@ -122,7 +104,7 @@ func ServerCron(loop *AeLoop, id int, extra interface{}) {
 		if key == nil {
 			break
 		}
-		if int64(val.(*Gobj).IntVal()) < time.Now().Unix() {
+		if int64(val.IntVal()) < time.Now().Unix() {
 			server.db.data.RemoveKey(key)
 			server.db.expire.RemoveKey(key)
 		}
@@ -131,7 +113,7 @@ func ServerCron(loop *AeLoop, id int, extra interface{}) {
 
 func initServer(config *Config) error {
 	server.port = config.Port
-	server.clients = ListCreate(ListType{EqualFunc: ClientEqual})
+	server.clients = make(map[int]*GodisClient)
 	server.db = &GodisDB{
 		data:   DictCreate(DictType{HashFunc: GStrHash, EqualFunc: GStrEqual}),
 		expire: DictCreate(DictType{HashFunc: GStrHash, EqualFunc: GStrEqual}),

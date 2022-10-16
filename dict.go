@@ -1,8 +1,8 @@
 package main
 
 type entry struct {
-	key  interface{}
-	val  interface{}
+	key  *Gobj
+	val  *Gobj
 	next *entry
 }
 
@@ -14,8 +14,8 @@ type htable struct {
 }
 
 type DictType struct {
-	HashFunc  func(key interface{}) int
-	EqualFunc func(k1, k2 interface{}) bool
+	HashFunc  func(key *Gobj) int
+	EqualFunc func(k1, k2 *Gobj) bool
 }
 
 type Dict struct {
@@ -31,11 +31,11 @@ func DictCreate(dictType DictType) *Dict {
 	return &dict
 }
 
-func (dict *Dict) RandomGet() (key, val interface{}) {
+func (dict *Dict) RandomGet() (key, val *Gobj) {
 	//TODO:
 	return nil, nil
 }
 
-func (dic *Dict) RemoveKey(key interface{}) {
+func (dic *Dict) RemoveKey(key *Gobj) {
 	//TODO:
 }
