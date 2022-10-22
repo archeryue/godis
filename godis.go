@@ -75,7 +75,7 @@ func setCommand(c *GodisClient) {
 	//TODO
 }
 
-func processCommand(c *GodisClient) {
+func ProcessCommand(c *GodisClient) {
 	//TODO: lookup command
 	//TODO: call command
 	//TODO: decrRef args
@@ -178,7 +178,7 @@ func handleBulkBuf(client *GodisClient) (bool, error) {
 	return true, nil
 }
 
-func processQueryBuf(client *GodisClient) error {
+func ProcessQueryBuf(client *GodisClient) error {
 	for client.queryLen > 0 {
 		if client.cmdTy == COMMAND_UNKNOWN {
 			if client.queryBuf[0] == '*' {
@@ -205,7 +205,7 @@ func processQueryBuf(client *GodisClient) error {
 			if len(client.args) == 0 {
 				resetClient(client)
 			} else {
-				processCommand(client)
+				ProcessCommand(client)
 			}
 		} else {
 			// cmd incomplete
@@ -227,7 +227,7 @@ func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
 		return
 	}
 	client.queryLen += n
-	err = processQueryBuf(client)
+	err = ProcessQueryBuf(client)
 	if err != nil {
 		log.Printf("process query buf err: %v\n", err)
 		freeClient(client)
