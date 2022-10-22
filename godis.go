@@ -115,7 +115,7 @@ func handleInlineBuf(client *GodisClient) (bool, error) {
 	subs := strings.Split(string(client.queryBuf[:index]), " ")
 	client.queryBuf = client.queryBuf[index+2:]
 	client.queryLen -= index + 2
-	client.args = make([]*Gobj, len(subs), len(subs))
+	client.args = make([]*Gobj, len(subs))
 	for i, v := range subs {
 		client.args[i] = CreateObject(GSTR, v)
 	}
@@ -139,7 +139,7 @@ func handleBulkBuf(client *GodisClient) (bool, error) {
 			return true, nil
 		}
 		client.bulkNum = bnum
-		client.args = make([]*Gobj, bnum, bnum)
+		client.args = make([]*Gobj, bnum)
 	}
 	// read every bulk string
 	for client.bulkNum > 0 {
@@ -218,7 +218,7 @@ func processQueryBuf(client *GodisClient) error {
 func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
 	client := extra.(*GodisClient)
 	if len(client.queryBuf)-client.queryLen < GODIS_MAX_BULK {
-		client.queryBuf = append(client.queryBuf, make([]byte, GODIS_MAX_BULK, GODIS_MAX_BULK)...)
+		client.queryBuf = append(client.queryBuf, make([]byte, GODIS_MAX_BULK)...)
 	}
 	n, err := Read(fd, client.queryBuf[client.queryLen:])
 	if err != nil {
@@ -255,7 +255,7 @@ func CreateClient(fd int) *GodisClient {
 	var client GodisClient
 	client.fd = fd
 	client.db = server.db
-	client.queryBuf = make([]byte, GODIS_IO_BUF, GODIS_IO_BUF)
+	client.queryBuf = make([]byte, GODIS_IO_BUF)
 	client.reply = ListCreate(ListType{EqualFunc: GStrEqual})
 	return &client
 }
