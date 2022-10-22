@@ -174,7 +174,7 @@ func handleBulkBuf(client *GodisClient) (bool, error) {
 		client.bulkLen = 0
 		client.bulkNum -= 1
 	}
-	// read every bulk
+	// complete reading every bulk
 	return true, nil
 }
 
