@@ -2,9 +2,11 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"hash/fnv"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -89,15 +91,25 @@ func resetClient(client *GodisClient) {
 
 }
 
-func handleInlineBuf(client *GodisClient) (bool, error) {
+func (client *GodisClient) findLineInQuery() (int, error) {
 	index := strings.IndexAny(string(client.queryBuf[:client.queryLen]), "\r\n")
+	if index < 0 && client.queryLen > GODIS_MAX_INLINE {
+		return index, errors.New("too big inline cmd")
+	}
+	return index, nil
+}
+
+func (client *GodisClient) getNumInQuery(s, e int) (int, error) {
+	num, err := strconv.Atoi(string(client.queryBuf[s:e]))
+	client.queryBuf = client.queryBuf[e+2:]
+	client.queryLen -= e + 2
+	return num, err
+}
+
+func handleInlineBuf(client *GodisClient) (bool, error) {
+	index, err := client.findLineInQuery()
 	if index < 0 {
-		if client.queryLen > GODIS_MAX_INLINE {
-			return false, errors.New("too big inline cmd")
-		} else {
-			// wait to next read
-			return false, nil
-		}
+		return false, err
 	}
 
 	subs := strings.Split(string(client.queryBuf[:index]), " ")
@@ -112,10 +124,61 @@ func handleInlineBuf(client *GodisClient) (bool, error) {
 }
 
 func handleBulkBuf(client *GodisClient) (bool, error) {
+	// read bulk num
+	if client.bulkNum == 0 {
+		index, err := client.findLineInQuery()
+		if index < 0 {
+			return false, err
+		}
+
+		bnum, err := client.getNumInQuery(1, index)
+		if err != nil {
+			return false, err
+		}
+		if bnum == 0 {
+			return true, nil
+		}
+		client.bulkNum = bnum
+		client.args = make([]*Gobj, bnum, bnum)
+	}
+	// read every bulk string
+	for client.bulkNum > 0 {
+		// read bulk length
+		if client.bulkLen == 0 {
+			index, err := client.findLineInQuery()
+			if index < 0 {
+				return false, err
+			}
+
+			if client.queryBuf[0] != '$' {
+				return false, errors.New("expect $ for bulk length")
+			}
+
+			blen, err := client.getNumInQuery(1, index)
+			if err != nil || blen == 0 {
+				return false, err
+			}
+			client.bulkLen = blen
+		}
+		// read bulk string
+		index, err := client.findLineInQuery()
+		if index < 0 {
+			return false, err
+		}
+		if client.bulkLen != index {
+			return false, errors.New(fmt.Sprintf("expect bulk length %v, get %v", client.bulkLen, index))
+		}
+		client.args[len(client.args)-client.bulkNum] = CreateObject(GSTR, string(client.queryBuf[:index]))
+		client.queryBuf = client.queryBuf[index+2:]
+		client.queryLen -= index + 2
+		client.bulkLen = 0
+		client.bulkNum -= 1
+	}
+	// read every bulk
 	return true, nil
 }
 
-func handleQueryBuf(client *GodisClient) error {
+func processQueryBuf(client *GodisClient) error {
 	for client.queryLen > 0 {
 		if client.cmdTy == COMMAND_UNKNOWN {
 			if client.queryBuf[0] == '*' {
@@ -145,6 +208,7 @@ func handleQueryBuf(client *GodisClient) error {
 				processCommand(client)
 			}
 		} else {
+			// cmd incomplete
 			break
 		}
 	}
@@ -159,12 +223,14 @@ func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
 	n, err := Read(fd, client.queryBuf[client.queryLen:])
 	if err != nil {
 		log.Printf("client %v read err: %v\n", fd, err)
+		freeClient(client)
 		return
 	}
 	client.queryLen += n
-	err = handleQueryBuf(client)
+	err = processQueryBuf(client)
 	if err != nil {
-		log.Printf("handle query buf err: %v\n", err)
+		log.Printf("process query buf err: %v\n", err)
+		freeClient(client)
 		return
 	}
 }
