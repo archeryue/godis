@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"hash/fnv"
 	"log"
 	"os"
@@ -158,15 +157,18 @@ func handleBulkBuf(client *GodisClient) (bool, error) {
 			if err != nil || blen == 0 {
 				return false, err
 			}
+			if blen > GODIS_MAX_BULK {
+				return false, errors.New("too big bulk")
+			}
 			client.bulkLen = blen
 		}
 		// read bulk string
-		index, err := client.findLineInQuery()
-		if index < 0 {
-			return false, err
+		if client.queryLen < client.bulkLen+2 {
+			return false, nil
 		}
-		if client.bulkLen != index {
-			return false, errors.New(fmt.Sprintf("expect bulk length %v, get %v", client.bulkLen, index))
+		index := client.bulkLen
+		if client.queryBuf[index] != '\r' || client.queryBuf[index+1] != '\n' {
+			return false, errors.New("expect CRLF for bulk end")
 		}
 		client.args[len(client.args)-client.bulkNum] = CreateObject(GSTR, string(client.queryBuf[:index]))
 		client.queryBuf = client.queryBuf[index+2:]
