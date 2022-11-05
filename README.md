@@ -5,3 +5,4 @@
  - Part 4：[Godis代码结构与Main函数](https://www.bilibili.com/video/BV1fe4y1i7rf/)
  - Part 5：[GodisAe库与Epoll封装](https://www.bilibili.com/video/BV1Hd4y117sL/)
  - Part 6：[Redis协议与ReadQueryFromClient](https://www.bilibili.com/video/BV1nd4y1c76f/)
+ - Part 7：[List实现与SendReplyToClient](https://www.bilibili.com/video/BV1iv4y1U7sY/)
