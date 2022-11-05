@@ -42,6 +42,7 @@ type GodisClient struct {
 	db       *GodisDB
 	args     []*Gobj
 	reply    *List
+	sentLen  int
 	queryBuf []byte
 	queryLen int
 	cmdTy    CmdType
@@ -237,11 +238,40 @@ func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
 	}
 }
 
+func SendReplyToClient(loop *AeLoop, fd int, extra interface{}) {
+	client := extra.(*GodisClient)
+	for client.reply.Length() > 0 {
+		rep := client.reply.First()
+		buf := []byte(rep.Val.Val_.(string))
+		bufLen := len(buf)
+		if client.sentLen < bufLen {
+			n, err := Write(fd, buf[client.sentLen:])
+			if err != nil {
+				log.Printf("send reply err: %v\n", err)
+				freeClient(client)
+				return
+			}
+			client.sentLen += n
+			if client.sentLen == bufLen {
+				client.reply.DelNode(rep)
+				rep.Val.DecrRefCount()
+				client.sentLen = 0
+			} else {
+				break
+			}
+		}
+	}
+	if client.reply.Length() == 0 {
+		client.sentLen = 0
+		loop.RemoveFileEvent(fd, AE_WRITABLE)
+	}
+}
+
 func GStrEqual(a, b *Gobj) bool {
 	if a.Type_ != GSTR || b.Type_ != GSTR {
 		return false
 	}
-	return a.Val_.(string) == a.Val_.(string)
+	return a.Val_.(string) == b.Val_.(string)
 }
 
 func GStrHash(key *Gobj) int {

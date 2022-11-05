@@ -1,7 +1,7 @@
 package main
 
 type Node struct {
-	val  *Gobj
+	Val  *Gobj
 	next *Node
 	prev *Node
 }
@@ -12,8 +12,9 @@ type ListType struct {
 
 type List struct {
 	ListType
-	head *Node
-	tail *Node
+	head   *Node
+	tail   *Node
+	length int
 }
 
 func ListCreate(listType ListType) *List {
@@ -22,9 +23,32 @@ func ListCreate(listType ListType) *List {
 	return &list
 }
 
+func (list *List) Length() int {
+	return list.length
+}
+
+func (list *List) First() *Node {
+	return list.head
+}
+
+func (list *List) Last() *Node {
+	return list.tail
+}
+
+func (list *List) Find(val *Gobj) *Node {
+	p := list.head
+	for p != nil {
+		if list.EqualFunc(p.Val, val) {
+			break
+		}
+		p = p.next
+	}
+	return p
+}
+
 func (list *List) Append(val *Gobj) {
 	var n Node
-	n.val = val
+	n.Val = val
 	if list.head == nil {
 		list.head = &n
 		list.tail = &n
@@ -33,22 +57,44 @@ func (list *List) Append(val *Gobj) {
 		list.tail.next = &n
 		list.tail = list.tail.next
 	}
+	list.length += 1
 }
 
-func (list *List) Remove(val *Gobj) {
-	p := list.head
-	for p != nil {
-		if list.EqualFunc(p.val, val) {
-			break
-		}
-		p = p.next
+func (list *List) LPush(val *Gobj) {
+	var n Node
+	n.Val = val
+	if list.head == nil {
+		list.head = &n
+		list.tail = &n
+	} else {
+		n.next = list.head
+		list.head.prev = &n
+		list.head = &n
 	}
-	if p != nil {
-		p.prev = p.next
-		if p.next != nil {
-			p.next.prev = p.prev
-		}
-		p.prev = nil
-		p.next = nil
+	list.length += 1
+}
+
+func (list *List) DelNode(n *Node) {
+	if n == nil {
+		return
 	}
+	if list.head == n {
+		n.next.prev = nil
+		list.head = n.next
+		n.next = nil
+	} else if list.tail == n {
+		n.prev.next = nil
+		list.tail = n.prev
+		n.prev = nil
+	} else {
+		n.prev.next = n.next
+		n.next.prev = n.prev
+		n.prev = nil
+		n.next = nil
+	}
+	list.length -= 1
+}
+
+func (list *List) Delete(val *Gobj) {
+	list.DelNode(list.Find(val))
 }
