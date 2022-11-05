@@ -38,7 +38,7 @@ func TcpServer(port int) (int, error) {
 	// golang.syscall will handle htons
 	addr.Port = port
 	// golang will set addr.Addr = any(0)
-	err = unix.Bind(s, addr)
+	err = unix.Bind(s, &addr)
 	if err != nil {
 		log.Printf("bind addr err: %v\n", err)
 		unix.Close(s)
