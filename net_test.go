@@ -28,14 +28,14 @@ func EchoServer(end chan struct{}) {
 		fmt.Printf("server write error: %v\n", err)
 	}
 	fmt.Printf("write %v bytes\n", n)
-	<- end
+	<-end
 }
 
 func TestNet(t *testing.T) {
 	end := make(chan struct{})
 	go EchoServer(end)
-	<- end
-	host := [4]byte{0,0,0,0}
+	<-end
+	host := [4]byte{0, 0, 0, 0}
 	cfd, err := Connect(host, 6666)
 	assert.Nil(t, err)
 	msg := "helloworld"

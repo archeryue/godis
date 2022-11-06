@@ -73,7 +73,7 @@ func TestAe(t *testing.T) {
 	loop.AddTimeEvent(AE_ONCE, 10, OnceProc, t)
 	end := make(chan struct{}, 2)
 	loop.AddTimeEvent(AE_NORMAL, 10, NormalProc, end)
-	<- end
-	<- end
+	<-end
+	<-end
 	loop.stop = true
 }
