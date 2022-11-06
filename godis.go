@@ -79,6 +79,7 @@ func ProcessCommand(c *GodisClient) {
 	//TODO: lookup command
 	//TODO: call command
 	//TODO: decrRef args
+	resetClient(c)
 }
 
 func freeClient(client *GodisClient) {
@@ -88,7 +89,8 @@ func freeClient(client *GodisClient) {
 }
 
 func resetClient(client *GodisClient) {
-
+	//TODO: reset other things
+	client.cmdTy = COMMAND_UNKNOWN
 }
 
 func (client *GodisClient) findLineInQuery() (int, error) {

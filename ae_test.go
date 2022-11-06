@@ -14,7 +14,7 @@ func WriteProc(loop *AeLoop, fd int, extra interface{}) {
 		fmt.Printf("write err: %v\n", err)
 		return
 	}
-	fmt.Printf("write %v bytes\n", n)
+	fmt.Printf("ae write %v bytes\n", n)
 	loop.RemoveFileEvent(fd, AE_WRITABLE)
 }
 
@@ -25,7 +25,7 @@ func ReadProc(loop *AeLoop, fd int, extra interface{}) {
 		fmt.Printf("read err: %v\n", err)
 		return
 	}
-	fmt.Printf("read %v bytes\n", n)
+	fmt.Printf("ae read %v bytes\n", n)
 	loop.AddFileEvent(fd, AE_WRITABLE, WriteProc, buf)
 }
 
