@@ -13,14 +13,14 @@ var (
 	EP_ERR = errors.New("expand error")
 )
 
-type entry struct {
-	key  *Gobj
-	val  *Gobj
-	next *entry
+type Entry struct {
+	Key  *Gobj
+	Val  *Gobj
+	next *Entry
 }
 
 type htable struct {
-	table []*entry
+	table []*Entry
 	size  int64
 	mask  int64
 	used  int64
@@ -64,7 +64,7 @@ func (dict *Dict) rehash(step int) {
 		entry := dict.hts[0].table[dict.rehashidx]
 		for entry != nil {
 			ne := entry.next
-			idx := dict.HashFunc(entry.key) & dict.hts[1].mask
+			idx := dict.HashFunc(entry.Key) & dict.hts[1].mask
 			entry.next = dict.hts[1].table[idx]
 			dict.hts[1].table[idx] = entry
 			dict.hts[0].used -= 1
@@ -94,7 +94,7 @@ func (dict *Dict) expand(size int64) error {
 	var ht htable
 	ht.size = sz
 	ht.mask = sz - 1
-	ht.table = make([]*entry, sz)
+	ht.table = make([]*Entry, sz)
 	ht.used = 0
 	// check for init
 	if dict.hts[0] == nil {
