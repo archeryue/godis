@@ -94,7 +94,7 @@ func resetClient(client *GodisClient) {
 }
 
 func (client *GodisClient) findLineInQuery() (int, error) {
-	index := strings.IndexAny(string(client.queryBuf[:client.queryLen]), "\r\n")
+	index := strings.Index(string(client.queryBuf[:client.queryLen]), "\r\n")
 	if index < 0 && client.queryLen > GODIS_MAX_INLINE {
 		return index, errors.New("too big inline cmd")
 	}
