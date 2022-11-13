@@ -28,6 +28,13 @@ func (o *Gobj) IntVal() int {
 	return val
 }
 
+func (o *Gobj) StrVal() string {
+	if o.Type_ != GSTR {
+		return ""
+	}
+	return o.Val_.(string)
+}
+
 func CreateFromInt(val int) *Gobj {
 	return &Gobj{
 		Type_:    GSTR,

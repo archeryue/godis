@@ -244,7 +244,7 @@ func SendReplyToClient(loop *AeLoop, fd int, extra interface{}) {
 	client := extra.(*GodisClient)
 	for client.reply.Length() > 0 {
 		rep := client.reply.First()
-		buf := []byte(rep.Val.Val_.(string))
+		buf := []byte(rep.Val.StrVal())
 		bufLen := len(buf)
 		if client.sentLen < bufLen {
 			n, err := Write(fd, buf[client.sentLen:])
@@ -273,7 +273,7 @@ func GStrEqual(a, b *Gobj) bool {
 	if a.Type_ != GSTR || b.Type_ != GSTR {
 		return false
 	}
-	return a.Val_.(string) == b.Val_.(string)
+	return a.StrVal() == b.StrVal()
 }
 
 func GStrHash(key *Gobj) int {
@@ -281,7 +281,7 @@ func GStrHash(key *Gobj) int {
 		return 0
 	}
 	hash := fnv.New32()
-	hash.Write([]byte(key.Val_.(string)))
+	hash.Write([]byte(key.StrVal()))
 	return int(hash.Sum32())
 }
 
