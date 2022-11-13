@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	INIT_SIZE int64 = 8
+	INIT_SIZE    int64 = 8
 	FORCE_RATION int64 = 3
-	GROW_RATION int64 = 2
-	DEFAULT_STEP int = 1
+	GROW_RATION  int64 = 2
+	DEFAULT_STEP int   = 1
 )
 
 var (
@@ -182,6 +182,31 @@ func (dict *Dict) Add(key, val *Gobj) error {
 		return EX_ERR
 	}
 	entry.Val = val
+	return nil
+}
+
+func (dict *Dict) Find(key *Gobj) *Entry {
+	if dict.hts[0].size == 0 {
+		return nil
+	}
+	if dict.isRehashing() {
+		dict.rehashStep()
+	}
+	// find key in both ht
+	h := dict.HashFunc(key)
+	for i := 0; i <= 1; i++ {
+		idx := h & dict.hts[i].mask
+		e := dict.hts[i].table[idx]
+		for e != nil {
+			if dict.EqualFunc(e.Key, key) {
+				return e
+			}
+			e = e.next
+		}
+		if !dict.isRehashing() {
+			break
+		}
+	}
 	return nil
 }
 
