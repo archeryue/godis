@@ -276,13 +276,13 @@ func GStrEqual(a, b *Gobj) bool {
 	return a.StrVal() == b.StrVal()
 }
 
-func GStrHash(key *Gobj) int {
+func GStrHash(key *Gobj) int64 {
 	if key.Type_ != GSTR {
 		return 0
 	}
-	hash := fnv.New32()
+	hash := fnv.New64()
 	hash.Write([]byte(key.StrVal()))
-	return int(hash.Sum32())
+	return int64(hash.Sum64())
 }
 
 func CreateClient(fd int) *GodisClient {
