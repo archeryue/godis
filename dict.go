@@ -5,12 +5,16 @@ import (
 	"math"
 )
 
-const INIT_SIZE int64 = 8
-const FORCE_RATION int64 = 3
-const GROW_RATION int64 = 2
+const (
+	INIT_SIZE int64 = 8
+	FORCE_RATION int64 = 3
+	GROW_RATION int64 = 2
+	DEFAULT_STEP int = 1
+)
 
 var (
 	EP_ERR = errors.New("expand error")
+	EX_ERR = errors.New("key exists error")
 )
 
 type Entry struct {
@@ -46,6 +50,11 @@ func DictCreate(dictType DictType) *Dict {
 
 func (dict *Dict) isRehashing() bool {
 	return dict.rehashidx != -1
+}
+
+func (dict *Dict) rehashStep() {
+	//TODO: check iterators
+	dict.rehash(DEFAULT_STEP)
 }
 
 func (dict *Dict) rehash(step int) {
@@ -117,6 +126,62 @@ func (dict *Dict) expandIfNeeded() error {
 	if (dict.hts[0].used > dict.hts[0].size) && (dict.hts[0].used/dict.hts[0].size > FORCE_RATION) {
 		return dict.expand(dict.hts[0].size * GROW_RATION)
 	}
+	return nil
+}
+
+// return the index of a free slot, return -1 if the key is exists or err.
+func (dict *Dict) keyIndex(key *Gobj) int64 {
+	err := dict.expandIfNeeded()
+	if err != nil {
+		return -1
+	}
+	h := dict.HashFunc(key)
+	var idx int64
+	for i := 0; i <= 1; i++ {
+		idx = h & dict.hts[i].mask
+		e := dict.hts[i].table[idx]
+		for e != nil {
+			if dict.EqualFunc(e.Key, key) {
+				return -1
+			}
+			e = e.next
+		}
+		if !dict.isRehashing() {
+			break
+		}
+	}
+	return idx
+}
+
+func (dict *Dict) AddRaw(key *Gobj) *Entry {
+	if dict.isRehashing() {
+		dict.rehashStep()
+	}
+	idx := dict.keyIndex(key)
+	if idx == -1 {
+		return nil
+	}
+	// add key & return entry
+	var ht *htable
+	if dict.isRehashing() {
+		ht = dict.hts[1]
+	} else {
+		ht = dict.hts[0]
+	}
+	var e Entry
+	e.next = ht.table[idx]
+	ht.table[idx] = &e
+	ht.used += 1
+	return &e
+}
+
+// add a new key-val pair, return err if key exists
+func (dict *Dict) Add(key, val *Gobj) error {
+	entry := dict.AddRaw(key)
+	if entry == nil {
+		return EX_ERR
+	}
+	entry.Val = val
 	return nil
 }
 
