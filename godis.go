@@ -311,13 +311,13 @@ const EXPIRE_CHECK_COUNT int = 100
 // background job, runs every 100ms
 func ServerCron(loop *AeLoop, id int, extra interface{}) {
 	for i := 0; i < EXPIRE_CHECK_COUNT; i++ {
-		key, val := server.db.expire.RandomGet()
-		if key == nil {
+		entry := server.db.expire.RandomGet()
+		if entry == nil {
 			break
 		}
-		if int64(val.IntVal()) < time.Now().Unix() {
-			server.db.data.RemoveKey(key)
-			server.db.expire.RemoveKey(key)
+		if int64(entry.Val.IntVal()) < time.Now().Unix() {
+			server.db.data.Delete(entry.Key)
+			server.db.expire.Delete(entry.Key)
 		}
 	}
 }
