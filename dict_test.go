@@ -16,8 +16,6 @@ func TestDict(t *testing.T) {
 	v1 := CreateObject(GSTR, "v1")
 	e := dict.Add(k1, v1)
 	assert.Nil(t, e)
-	k1.IncrRefCount()
-	v1.IncrRefCount()
 
 	entry = dict.Find(k1)
 	assert.Equal(t, k1, entry.Key)

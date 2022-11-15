@@ -173,6 +173,7 @@ func (dict *Dict) AddRaw(key *Gobj) *Entry {
 	}
 	var e Entry
 	e.Key = key
+	key.IncrRefCount()
 	e.next = ht.table[idx]
 	ht.table[idx] = &e
 	ht.used += 1
@@ -186,6 +187,7 @@ func (dict *Dict) Add(key, val *Gobj) error {
 		return EX_ERR
 	}
 	entry.Val = val
+	val.IncrRefCount()
 	return nil
 }
 
