@@ -20,11 +20,26 @@ func TestDict(t *testing.T) {
 	entry = dict.Find(k1)
 	assert.Equal(t, k1, entry.Key)
 	assert.Equal(t, v1, entry.Val)
+	assert.Equal(t, 2, k1.refCount)
+	assert.Equal(t, 2, v1.refCount)
 
 	e = dict.Delete(k1)
 	assert.Nil(t, e)
 	entry = dict.Find(k1)
 	assert.Nil(t, entry)
+	assert.Equal(t, 1, k1.refCount)
+	assert.Equal(t, 1, v1.refCount)
+
+	e = dict.Add(k1, v1)
+	assert.Nil(t, e)
+	v := dict.Get(k1)
+	assert.Equal(t, v1, v)
+	v2 := CreateObject(GSTR, "v2")
+	dict.Set(k1, v2)
+	v = dict.Get(k1)
+	assert.Equal(t, v2, v)
+	assert.Equal(t, 2, v2.refCount)
+	assert.Equal(t, 1, v1.refCount)
 }
 
 func TestRehash(t *testing.T) {

@@ -191,6 +191,16 @@ func (dict *Dict) Add(key, val *Gobj) error {
 	return nil
 }
 
+func (dict *Dict) Set(key, val *Gobj) {
+	if err := dict.Add(key, val); err == nil {
+		return
+	}
+	entry := dict.Find(key)
+	entry.Val.DecrRefCount()
+	entry.Val = val
+	val.IncrRefCount()
+}
+
 func freeEntry(e *Entry) {
 	e.Key.DecrRefCount()
 	e.Val.DecrRefCount()
@@ -253,6 +263,14 @@ func (dict *Dict) Find(key *Gobj) *Entry {
 		}
 	}
 	return nil
+}
+
+func (dict *Dict) Get(key *Gobj) *Gobj {
+	entry := dict.Find(key)
+	if entry == nil {
+		return nil
+	}
+	return entry.Val
 }
 
 func (dict *Dict) RandomGet() *Entry {
