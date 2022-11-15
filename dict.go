@@ -8,7 +8,7 @@ import (
 
 const (
 	INIT_SIZE    int64 = 8
-	FORCE_RATION int64 = 3
+	FORCE_RATION int64 = 2
 	GROW_RATION  int64 = 2
 	DEFAULT_STEP int   = 1
 )
@@ -47,6 +47,7 @@ type Dict struct {
 func DictCreate(dictType DictType) *Dict {
 	var dict Dict
 	dict.DictType = dictType
+	dict.rehashidx = -1
 	return &dict
 }
 
@@ -99,7 +100,7 @@ func nextPower(size int64) int64 {
 
 func (dict *Dict) expand(size int64) error {
 	sz := nextPower(size)
-	if dict.isRehashing() || dict.hts[0].used > sz {
+	if dict.isRehashing() || (dict.hts[0] != nil && dict.hts[0].size >= sz) {
 		return EP_ERR
 	}
 	var ht htable
@@ -122,7 +123,7 @@ func (dict *Dict) expandIfNeeded() error {
 	if dict.isRehashing() {
 		return nil
 	}
-	if dict.hts[0].size == 0 {
+	if dict.hts[0] == nil {
 		return dict.expand(INIT_SIZE)
 	}
 	if (dict.hts[0].used > dict.hts[0].size) && (dict.hts[0].used/dict.hts[0].size > FORCE_RATION) {
@@ -171,6 +172,7 @@ func (dict *Dict) AddRaw(key *Gobj) *Entry {
 		ht = dict.hts[0]
 	}
 	var e Entry
+	e.Key = key
 	e.next = ht.table[idx]
 	ht.table[idx] = &e
 	ht.used += 1
@@ -193,7 +195,7 @@ func freeEntry(e *Entry) {
 }
 
 func (dict *Dict) Delete(key *Gobj) error {
-	if dict.hts[0].size == 0 {
+	if dict.hts[0] == nil {
 		return NK_ERR
 	}
 	if dict.isRehashing() {
@@ -227,7 +229,7 @@ func (dict *Dict) Delete(key *Gobj) error {
 }
 
 func (dict *Dict) Find(key *Gobj) *Entry {
-	if dict.hts[0].size == 0 {
+	if dict.hts[0] == nil {
 		return nil
 	}
 	if dict.isRehashing() {
@@ -252,13 +254,13 @@ func (dict *Dict) Find(key *Gobj) *Entry {
 }
 
 func (dict *Dict) RandomGet() *Entry {
-	if dict.hts[0].size == 0 || dict.hts[0].used == 0 {
+	if dict.hts[0] == nil {
 		return nil
 	}
 	t := 0
 	if dict.isRehashing() {
 		dict.rehashStep()
-		if dict.hts[1].used > dict.hts[0].used {
+		if dict.hts[1] != nil && dict.hts[1].used > dict.hts[0].used {
 			// simplify the logic, random get in the bigger table
 			t = 1
 		}
