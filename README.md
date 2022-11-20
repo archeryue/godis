@@ -6,3 +6,4 @@
  - Part 5：[GodisAe库与Epoll封装](https://www.bilibili.com/video/BV1Hd4y117sL/)
  - Part 6：[Redis协议与ReadQueryFromClient](https://www.bilibili.com/video/BV1nd4y1c76f/)
  - Part 7：[List实现与SendReplyToClient](https://www.bilibili.com/video/BV1iv4y1U7sY/)
+ - Part 8：[Dict实现与渐进式Rehash](https://www.bilibili.com/video/BV1c84y1C7wQ/)
