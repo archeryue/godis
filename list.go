@@ -79,16 +79,24 @@ func (list *List) DelNode(n *Node) {
 		return
 	}
 	if list.head == n {
-		n.next.prev = nil
+		if n.next != nil {
+			n.next.prev = nil
+		}
 		list.head = n.next
 		n.next = nil
 	} else if list.tail == n {
-		n.prev.next = nil
+		if n.prev != nil {
+			n.prev.next = nil
+		}
 		list.tail = n.prev
 		n.prev = nil
 	} else {
-		n.prev.next = n.next
-		n.next.prev = n.prev
+		if n.prev != nil {
+			n.prev.next = n.next
+		}
+		if n.next != nil {
+			n.next.prev = n.prev
+		}
 		n.prev = nil
 		n.next = nil
 	}

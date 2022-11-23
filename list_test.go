@@ -10,6 +10,9 @@ func TestList(t *testing.T) {
 	list := ListCreate(ListType{EqualFunc: GStrEqual})
 	assert.Equal(t, list.Length(), 0)
 
+	list.Append(CreateObject(GSTR, "4"))
+	list.DelNode(list.First())
+
 	list.Append(CreateObject(GSTR, "1"))
 	list.Append(CreateObject(GSTR, "2"))
 	list.Append(CreateObject(GSTR, "3"))
