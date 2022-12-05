@@ -75,10 +75,44 @@ func setCommand(c *GodisClient) {
 	//TODO
 }
 
+func lookupCommand(cmdStr string) *GodisCommand {
+	for _, c := range cmdTable {
+		if c.name == cmdStr {
+			return &c
+		}
+	}
+	return nil
+}
+
+func (c *GodisClient) AddReply(o *Gobj) {
+	c.reply.Append(o)
+	o.IncrRefCount()
+	server.aeLoop.AddFileEvent(c.fd, AE_WRITABLE, SendReplyToClient, c)
+}
+
+func (c *GodisClient) AddReplyStr(str string) {
+	o := CreateObject(GSTR, str)
+	c.AddReply(o)
+	o.DecrRefCount()
+}
+
 func ProcessCommand(c *GodisClient) {
-	//TODO: lookup command
-	//TODO: call command
-	//TODO: decrRef args
+	cmdStr := c.args[0].StrVal()
+	if cmdStr == "quit" {
+		freeClient(c)
+		return
+	}
+	cmd := lookupCommand(cmdStr)
+	if cmd == nil {
+		c.AddReplyStr("-ERR: unknow command")
+		resetClient(c)
+		return
+	} else if cmd.arity != len(c.args) {
+		c.AddReplyStr("-ERR: wrong number of args")
+		resetClient(c)
+		return
+	}
+	cmd.proc(c)
 	resetClient(c)
 }
 
