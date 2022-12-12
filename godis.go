@@ -329,15 +329,15 @@ func CreateClient(fd int) *GodisClient {
 }
 
 func AcceptHandler(loop *AeLoop, fd int, extra interface{}) {
-	nfd, err := Accept(fd)
+	cfd, err := Accept(fd)
 	if err != nil {
 		log.Printf("accept err: %v\n", err)
 		return
 	}
-	client := CreateClient(nfd)
+	client := CreateClient(cfd)
 	//TODO: check max clients limit
-	server.clients[fd] = client
-	server.aeLoop.AddFileEvent(fd, AE_READABLE, ReadQueryFromClient, client)
+	server.clients[cfd] = client
+	server.aeLoop.AddFileEvent(cfd, AE_READABLE, ReadQueryFromClient, client)
 }
 
 const EXPIRE_CHECK_COUNT int = 100
