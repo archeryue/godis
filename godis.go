@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"hash/fnv"
 	"log"
 	"os"
@@ -67,8 +68,36 @@ var cmdTable []GodisCommand = []GodisCommand{
 	//TODO
 }
 
+func expireIfNeeded(key *Gobj) {
+	entry := server.db.expire.Find(key)
+	if entry == nil {
+		return
+	}
+	when := entry.Val.IntVal()
+	if when < GetMsTime() {
+		return
+	}
+	server.db.expire.Delete(key)
+	server.db.data.Delete(key)
+}
+
+func findKeyRead(key *Gobj) *Gobj {
+	expireIfNeeded(key)
+	return server.db.data.Get(key)
+}
+
 func getCommand(c *GodisClient) {
-	//TODO
+	key := c.args[1]
+	val := findKeyRead(key)
+	if val == nil {
+		//TODO: extract shared.strings
+		c.AddReplyStr("$-1\r\n")
+	} else if val.Type_ != GSTR {
+		c.AddReplyStr("-ERR: wrong type")
+	} else {
+		str := val.StrVal()
+		c.AddReplyStr(fmt.Sprintf("$%d%v\r\n", len(str), str))
+	}
 }
 
 func setCommand(c *GodisClient) {
@@ -349,7 +378,7 @@ func ServerCron(loop *AeLoop, id int, extra interface{}) {
 		if entry == nil {
 			break
 		}
-		if int64(entry.Val.IntVal()) < time.Now().Unix() {
+		if entry.Val.IntVal() < time.Now().Unix() {
 			server.db.data.Delete(entry.Key)
 			server.db.expire.Delete(entry.Key)
 		}
