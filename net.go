@@ -39,6 +39,10 @@ func Write(fd int, buf []byte) (int, error) {
 	return unix.Write(fd, buf)
 }
 
+func Close(fd int) {
+	unix.Close(fd)
+}
+
 func TcpServer(port int) (int, error) {
 	s, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, 0)
 	if err != nil {

@@ -93,7 +93,8 @@ func getCommand(c *GodisClient) {
 		//TODO: extract shared.strings
 		c.AddReplyStr("$-1\r\n")
 	} else if val.Type_ != GSTR {
-		c.AddReplyStr("-ERR: wrong type")
+		//TODO: extract shared.strings
+		c.AddReplyStr("-ERR: wrong type\r\n")
 	} else {
 		str := val.StrVal()
 		c.AddReplyStr(fmt.Sprintf("$%d%v\r\n", len(str), str))
@@ -101,7 +102,15 @@ func getCommand(c *GodisClient) {
 }
 
 func setCommand(c *GodisClient) {
-	//TODO
+	key := c.args[1]
+	val := c.args[2]
+	if val.Type_ != GSTR {
+		//TODO: extract shared.strings
+		c.AddReplyStr("-ERR: wrong type\r\n")
+	}
+	server.db.data.Set(key, val)
+	server.db.expire.Delete(key)
+	c.AddReplyStr("+OK\r\n")
 }
 
 func lookupCommand(cmdStr string) *GodisCommand {
@@ -145,15 +154,30 @@ func ProcessCommand(c *GodisClient) {
 	resetClient(c)
 }
 
+func freeArgsAndReply(client *GodisClient) {
+	for _, v := range client.args {
+		v.DecrRefCount()
+	}
+	for client.reply.length != 0 {
+		n := client.reply.head
+		client.reply.DelNode(n)
+		n.Val.DecrRefCount()
+	}
+}
+
 func freeClient(client *GodisClient) {
-	//TODO: delete file event
-	//TODO: decrRef reply & args list
-	//TODO: delete from clients
+	freeArgsAndReply(client)
+	delete(server.clients, client.fd)
+	server.aeLoop.RemoveFileEvent(client.fd, AE_READABLE)
+	server.aeLoop.RemoveFileEvent(client.fd, AE_WRITABLE)
+	Close(client.fd)
 }
 
 func resetClient(client *GodisClient) {
-	//TODO: reset other things
+	freeArgsAndReply(client)
 	client.cmdTy = COMMAND_UNKNOWN
+	client.bulkLen = 0
+	client.bulkNum = 0
 }
 
 func (client *GodisClient) findLineInQuery() (int, error) {
