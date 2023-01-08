@@ -7,3 +7,4 @@
  - Part 6：[Redis协议与ReadQueryFromClient](https://www.bilibili.com/video/BV1nd4y1c76f/)
  - Part 7：[List实现与SendReplyToClient](https://www.bilibili.com/video/BV1iv4y1U7sY/)
  - Part 8：[Dict实现与渐进式Rehash](https://www.bilibili.com/video/BV1c84y1C7wQ/)
+ - Part 9：[命令实现](https://www.bilibili.com/video/BV19Y41117Yy/)
