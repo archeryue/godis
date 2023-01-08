@@ -176,7 +176,7 @@ func (loop *AeLoop) nearestTime() int64 {
 	return nearest
 }
 
-func (loop *AeLoop) AeWait() (tes []*AeTimeEvent, fes []*AeFileEvent, err error) {
+func (loop *AeLoop) AeWait() (tes []*AeTimeEvent, fes []*AeFileEvent) {
 	timeout := loop.nearestTime() - GetMsTime()
 	if timeout <= 0 {
 		timeout = 10 // at least wait 10ms
@@ -184,8 +184,7 @@ func (loop *AeLoop) AeWait() (tes []*AeTimeEvent, fes []*AeFileEvent, err error)
 	var events [128]unix.EpollEvent
 	n, err := unix.EpollWait(loop.fileEventFd, events[:], int(timeout))
 	if err != nil {
-		log.Printf("epoll wait err: %v\n", err)
-		return
+		log.Printf("epoll wait warnning: %v\n", err)
 	}
 	if n > 0 {
 		log.Printf("ae get %v epoll events\n", n)
@@ -236,13 +235,7 @@ func (loop *AeLoop) AeProcess(tes []*AeTimeEvent, fes []*AeFileEvent) {
 
 func (loop *AeLoop) AeMain() {
 	for loop.stop != true {
-		tes, fes, err := loop.AeWait()
-		if err != nil {
-			loop.stop = true
-		}
-		if len(fes) > 0 {
-			log.Printf("ae wait,get %v file events\n", len(fes))
-		}
+		tes, fes := loop.AeWait()
 		loop.AeProcess(tes, fes)
 	}
 }

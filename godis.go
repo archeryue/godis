@@ -65,6 +65,7 @@ var server GodisServer
 var cmdTable []GodisCommand = []GodisCommand{
 	{"get", getCommand, 2},
 	{"set", setCommand, 3},
+	{"expire", expireCommand, 3},
 	//TODO
 }
 
@@ -74,7 +75,7 @@ func expireIfNeeded(key *Gobj) {
 		return
 	}
 	when := entry.Val.IntVal()
-	if when < GetMsTime() {
+	if when > GetMsTime() {
 		return
 	}
 	server.db.expire.Delete(key)
@@ -110,6 +111,20 @@ func setCommand(c *GodisClient) {
 	}
 	server.db.data.Set(key, val)
 	server.db.expire.Delete(key)
+	c.AddReplyStr("+OK\r\n")
+}
+
+func expireCommand(c *GodisClient) {
+	key := c.args[1]
+	val := c.args[2]
+	if val.Type_ != GSTR {
+		//TODO: extract shared.strings
+		c.AddReplyStr("-ERR: wrong type\r\n")
+	}
+	expire := GetMsTime() + (val.IntVal() * 1000)
+	expObj := CreateFromInt(expire)
+	server.db.expire.Set(key, expObj)
+	expObj.DecrRefCount()
 	c.AddReplyStr("+OK\r\n")
 }
 
