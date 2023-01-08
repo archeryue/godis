@@ -72,8 +72,12 @@ func (loop *AeLoop) getEpollMask(fd int) uint32 {
 
 func (loop *AeLoop) AddFileEvent(fd int, mask FeType, proc FileProc, extra interface{}) {
 	// epoll ctl
-	op := unix.EPOLL_CTL_ADD
 	ev := loop.getEpollMask(fd)
+	if ev&fe2ep[mask] != 0 {
+		// event is already registered
+		return
+	}
+	op := unix.EPOLL_CTL_ADD
 	if ev != 0 {
 		op = unix.EPOLL_CTL_MOD
 	}
@@ -90,6 +94,7 @@ func (loop *AeLoop) AddFileEvent(fd int, mask FeType, proc FileProc, extra inter
 	fe.proc = proc
 	fe.extra = extra
 	loop.FileEvents[getFeKey(fd, mask)] = &fe
+	log.Printf("ae add file event fd:%v, mask:%v\n", fd, mask)
 }
 
 func (loop *AeLoop) RemoveFileEvent(fd int, mask FeType) {
@@ -106,6 +111,7 @@ func (loop *AeLoop) RemoveFileEvent(fd int, mask FeType) {
 	}
 	// ae ctl
 	loop.FileEvents[getFeKey(fd, mask)] = nil
+	log.Printf("ae remove file event fd:%v, mask:%v\n", fd, mask)
 }
 
 func GetMsTime() int64 {
@@ -181,6 +187,9 @@ func (loop *AeLoop) AeWait() (tes []*AeTimeEvent, fes []*AeFileEvent, err error)
 		log.Printf("epoll wait err: %v\n", err)
 		return
 	}
+	if n > 0 {
+		log.Printf("ae get %v epoll events\n", n)
+	}
 	// collect file events
 	for i := 0; i < n; i++ {
 		if events[i].Events&unix.EPOLLIN != 0 {
@@ -217,8 +226,11 @@ func (loop *AeLoop) AeProcess(tes []*AeTimeEvent, fes []*AeFileEvent) {
 			te.when = GetMsTime() + te.interval
 		}
 	}
-	for _, fe := range fes {
-		fe.proc(loop, fe.fd, fe.extra)
+	if len(fes) > 0 {
+		log.Println("ae is processing file events")
+		for _, fe := range fes {
+			fe.proc(loop, fe.fd, fe.extra)
+		}
 	}
 }
 
@@ -227,6 +239,9 @@ func (loop *AeLoop) AeMain() {
 		tes, fes, err := loop.AeWait()
 		if err != nil {
 			loop.stop = true
+		}
+		if len(fes) > 0 {
+			log.Printf("ae wait,get %v file events\n", len(fes))
 		}
 		loop.AeProcess(tes, fes)
 	}

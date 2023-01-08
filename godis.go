@@ -136,6 +136,7 @@ func (c *GodisClient) AddReplyStr(str string) {
 
 func ProcessCommand(c *GodisClient) {
 	cmdStr := c.args[0].StrVal()
+	log.Printf("process command: %v\n", cmdStr)
 	if cmdStr == "quit" {
 		freeClient(c)
 		return
@@ -154,10 +155,13 @@ func ProcessCommand(c *GodisClient) {
 	resetClient(c)
 }
 
-func freeArgsAndReply(client *GodisClient) {
+func freeArgs(client *GodisClient) {
 	for _, v := range client.args {
 		v.DecrRefCount()
 	}
+}
+
+func freeReplyList(client *GodisClient) {
 	for client.reply.length != 0 {
 		n := client.reply.head
 		client.reply.DelNode(n)
@@ -166,15 +170,16 @@ func freeArgsAndReply(client *GodisClient) {
 }
 
 func freeClient(client *GodisClient) {
-	freeArgsAndReply(client)
+	freeArgs(client)
 	delete(server.clients, client.fd)
 	server.aeLoop.RemoveFileEvent(client.fd, AE_READABLE)
 	server.aeLoop.RemoveFileEvent(client.fd, AE_WRITABLE)
+	freeReplyList(client)
 	Close(client.fd)
 }
 
 func resetClient(client *GodisClient) {
-	freeArgsAndReply(client)
+	freeArgs(client)
 	client.cmdTy = COMMAND_UNKNOWN
 	client.bulkLen = 0
 	client.bulkNum = 0
@@ -319,6 +324,8 @@ func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
 		return
 	}
 	client.queryLen += n
+	log.Printf("read %v bytes from client:%v\n", n, client.fd)
+	log.Printf("ReadQueryFromClient, queryBuf : %v\n", string(client.queryBuf))
 	err = ProcessQueryBuf(client)
 	if err != nil {
 		log.Printf("process query buf err: %v\n", err)
@@ -329,6 +336,7 @@ func ReadQueryFromClient(loop *AeLoop, fd int, extra interface{}) {
 
 func SendReplyToClient(loop *AeLoop, fd int, extra interface{}) {
 	client := extra.(*GodisClient)
+	log.Printf("SendReplyToClient, reply len:%v\n", client.reply.Length())
 	for client.reply.Length() > 0 {
 		rep := client.reply.First()
 		buf := []byte(rep.Val.StrVal())
@@ -341,6 +349,7 @@ func SendReplyToClient(loop *AeLoop, fd int, extra interface{}) {
 				return
 			}
 			client.sentLen += n
+			log.Printf("send %v bytes to client:%v\n", n, client.fd)
 			if client.sentLen == bufLen {
 				client.reply.DelNode(rep)
 				rep.Val.DecrRefCount()
@@ -391,6 +400,7 @@ func AcceptHandler(loop *AeLoop, fd int, extra interface{}) {
 	//TODO: check max clients limit
 	server.clients[cfd] = client
 	server.aeLoop.AddFileEvent(cfd, AE_READABLE, ReadQueryFromClient, client)
+	log.Printf("accept client, fd: %v\n", cfd)
 }
 
 const EXPIRE_CHECK_COUNT int = 100
